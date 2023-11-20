@@ -3,8 +3,14 @@ from typing import List
 from numpy.polynomial import polynomial as P
 
 
-# pylint: disable=inconsistent-return-statements, missing-class-docstring
+# pylint: disable=inconsistent-return-statements
 class PolynomialRing:
+    """
+    Coefficients are read in this order:
+
+    1 + 2x + 3x^2 + 4x^3 -> [1, 2, 3, 4]
+    """
+
     def __init__(self, coefficients: List):
         self.q = 17
         self.coefficients: P.Polynomial = P.Polynomial(coefficients)
@@ -75,3 +81,10 @@ class PolynomialRing:
         raise TypeError(
             f"unsupported operand type '{operand}' for: 'PolynomialRing' and '{type_name}'"
         )
+
+
+if __name__ == "__main__":
+    a = PolynomialRing([1, 1, 1, 1])
+    b = PolynomialRing([1, 0, 0, 0])
+
+    print(a + b)
