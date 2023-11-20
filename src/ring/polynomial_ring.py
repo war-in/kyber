@@ -3,6 +3,7 @@ from typing import List
 from numpy.polynomial import polynomial as P
 
 
+# pylint: disable=inconsistent-return-statements, missing-class-docstring
 class PolynomialRing:
     def __init__(self, coefficients: List):
         self.q = 17
@@ -15,72 +16,62 @@ class PolynomialRing:
     def __add__(self, other):
         if isinstance(other, PolynomialRing):
             remainder = (self.coefficients + other.coefficients) % self.denominator
-
             return PolynomialRing(self._elem_wise_modulo(remainder))
-        elif isinstance(other, int):
+
+        if isinstance(other, int):
             return self + PolynomialRing([other])
-        else:
-            raise TypeError(
-                f"unsupported operand type(s) for +: 'Zn' and '{type(other).__name__}'"
-            )
+
+        self._raise_type_error("+", type(other).__name__)
 
     def __radd__(self, other):
         if isinstance(other, int):
             return self + PolynomialRing([other])
-        else:
-            raise TypeError(
-                f"unsupported operand type(s) for +: '{type(other).__name__}' and 'Zn'"
-            )
+
+        self._raise_type_error("+", type(other).__name__)
 
     def __mul__(self, other):
         if isinstance(other, PolynomialRing):
             remainder = (self.coefficients * other.coefficients) % self.denominator
-
             return PolynomialRing(self._elem_wise_modulo(remainder))
-        elif isinstance(other, int):
+
+        if isinstance(other, int):
             return self * PolynomialRing([other])
-        else:
-            raise TypeError(
-                f"unsupported operand type(s) for *: 'Zn' and '{type(other).__name__}'"
-            )
+
+        self._raise_type_error("*", type(other).__name__)
 
     def __rmul__(self, other):
         if isinstance(other, int):
             return self * PolynomialRing([other])
-        else:
-            raise TypeError(
-                f"unsupported operand type(s) for *: '{type(other).__name__}' and 'Zn'"
-            )
+
+        self._raise_type_error("*", type(other).__name__)
 
     def __sub__(self, other):
         if isinstance(other, PolynomialRing):
             remainder = (self.coefficients - other.coefficients) % self.denominator
-
             return PolynomialRing(self._elem_wise_modulo(remainder))
-        elif isinstance(other, int):
+
+        if isinstance(other, int):
             return self - PolynomialRing([other])
-        else:
-            raise TypeError(
-                f"unsupported operand type(s) for -: 'Zn' and '{type(other).__name__}'"
-            )
+
+        self._raise_type_error("-", type(other).__name__)
 
     def __rsub__(self, other):
         if isinstance(other, int):
             return PolynomialRing([other]) - self
-        else:
-            raise TypeError(
-                f"unsupported operand type(s) for -: '{type(other).__name__}' and 'Zn'"
-            )
+
+        self._raise_type_error("-", type(other).__name__)
 
     def __pow__(self, other):
         if isinstance(other, int):
             remainder = (self.coefficients**other) % self.denominator
-
             return PolynomialRing(self._elem_wise_modulo(remainder))
-        else:
-            raise TypeError(
-                f"unsupported operand type(s) for **: 'Zn' and '{type(other).__name__}'"
-            )
+
+        self._raise_type_error("**", type(other).__name__)
 
     def _elem_wise_modulo(self, remainder: P.Polynomial) -> List[int]:
         return [coef % self.q for coef in remainder.coef]
+
+    def _raise_type_error(self, operand: str, type_name: str):
+        raise TypeError(
+            f"unsupported operand type '{operand}' for: 'PolynomialRing' and '{type_name}'"
+        )
