@@ -12,6 +12,7 @@ poethepoet = "^0.24.2"
 pylint = "^3.0.2"
 black = "^23.11.0"
 isort = "^5.12.0"
+pycryptodome = "3.14.1"
 
 [tool.poe.tasks]
 lint = "pylint src"
