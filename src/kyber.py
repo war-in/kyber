@@ -1,8 +1,11 @@
 import hashlib
+from typing import List
 
 import numpy as np
+import sympy
 from Cryptodome.Random import get_random_bytes
 
+from helper_functions import encode
 from src.ring.polynomial_ring import PolynomialRing
 
 DEFAULT_PARAMETERS = {
@@ -96,6 +99,14 @@ class Kyber:
 
         return list(a.astype(int))
 
+    def apply_ntt(self, polynomials):
+        return np.array(
+            [
+                PolynomialRing(sympy.ntt(polynomial.get_coefs(), self.q))
+                for polynomial in polynomials
+            ]
+        )
+
     def key_gen(self):
         """
         Parameters: None
@@ -137,6 +148,20 @@ class Kyber:
                 )
             )
             N += 1
+
+        self.s = self.apply_ntt(self.s)
+        self.e = self.apply_ntt(self.e)
+
+        t = self.A @ self.s + self.e
+
+        pk = bytes()
+        for poly in t:
+            pk += encode(poly, 12)
+        sk = bytes()
+        for poly in self.s:
+            sk += encode(poly, 12)
+
+        return pk, sk
 
 
 if __name__ == "__main__":

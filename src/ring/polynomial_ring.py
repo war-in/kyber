@@ -1,5 +1,6 @@
 from typing import List
 
+import numpy as np
 from numpy.polynomial import polynomial as P
 
 
@@ -15,6 +16,9 @@ class PolynomialRing:
         self.q = 3329
         self.coefficients: P.Polynomial = P.Polynomial(coefficients)
         self.denominator = P.Polynomial([1] + [0] * 254 + [1])
+
+    def get_coefs(self):
+        return np.array(self.coefficients.coef).astype(int)
 
     def __str__(self):
         return str(self.coefficients)
