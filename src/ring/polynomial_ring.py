@@ -12,9 +12,9 @@ class PolynomialRing:
     """
 
     def __init__(self, coefficients: List):
-        self.q = 17
+        self.q = 3329
         self.coefficients: P.Polynomial = P.Polynomial(coefficients)
-        self.denominator = P.Polynomial([1, 0, 0, 0, 1])
+        self.denominator = P.Polynomial([1] + [0] * 254 + [1])
 
     def __str__(self):
         return str(self.coefficients)
