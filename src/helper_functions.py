@@ -28,7 +28,7 @@ def decode(encoded_bytes: bytes, l: int) -> PolynomialRing:
     :param encoded_bytes: Byte array
     :return: Polynomial from encoded_bytes
     """
-    coefficients = [0] * 255
+    coefficients = [0] * 256
     list_of_bits = bytes_to_bits(encoded_bytes)
     for i in range(256):
         coefficients[i] = sum(list_of_bits[i * l + j] << j for j in range(l))
