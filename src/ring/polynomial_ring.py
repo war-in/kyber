@@ -4,6 +4,13 @@ import numpy as np
 from numpy.polynomial import polynomial as P
 
 
+def round_up(x):
+    """
+    Round x.5 up always
+    """
+    return round(x + 0.000001)
+
+
 # pylint: disable=inconsistent-return-statements
 class PolynomialRing:
     """
@@ -54,6 +61,17 @@ class PolynomialRing:
             return self * PolynomialRing([other])
 
         self._raise_type_error("*", type(other).__name__)
+
+    def compress(self, d):
+        """
+        Compress the polynomial by compressing each coefficent
+        NOTE: This is lossy compression
+        """
+        compress_mod = 2**d
+        compress_float = compress_mod / self.q
+        return PolynomialRing(
+            [round_up(compress_float * c) % compress_mod for c in self.get_coefs()]
+        )
 
     def __sub__(self, other):
         if isinstance(other, PolynomialRing):
