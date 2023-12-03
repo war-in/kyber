@@ -21,8 +21,8 @@ class PolynomialRing:
 
     def __init__(self, coefficients: List):
         self.q = 3329
-        self.coefficients: P.Polynomial = P.Polynomial(coefficients)
-        self.denominator = P.Polynomial([1] + [0] * 254 + [1])
+        self.coefficients: P.Polynomial = P.Polynomial([c%self.q for c in coefficients])
+        self.denominator = P.Polynomial([1] + [0] * 255 + [1])
 
     def get_coefs(self):
         return np.array(self.coefficients.coef).astype(int)
@@ -48,6 +48,7 @@ class PolynomialRing:
 
     def __mul__(self, other):
         if isinstance(other, PolynomialRing):
+            # remainder = (P.Polynomial(np.multiply(self.coefficients.coef,other.coefficients.coef))) % self.denominator
             remainder = (self.coefficients * other.coefficients) % self.denominator
             return PolynomialRing(self._elem_wise_modulo(remainder))
 
@@ -69,8 +70,20 @@ class PolynomialRing:
         """
         compress_mod = 2**d
         compress_float = compress_mod / self.q
+
         return PolynomialRing(
             [round_up(compress_float * c) % compress_mod for c in self.get_coefs()]
+        )
+    def decompress(self, d):
+        """
+        Compress the polynomial by compressing each coefficent
+        NOTE: This is lossy compression
+        """
+        compress_mod = 2**d
+        compress_float = self.q / compress_mod
+
+        return PolynomialRing(
+            [round_up(compress_float * c) for c in self.get_coefs()]
         )
 
     def __sub__(self, other):
