@@ -3,9 +3,9 @@ from typing import List
 
 import numpy as np
 import sympy
-from Crypto.Random import get_random_bytes
+from Cryptodome.Random import get_random_bytes
 
-from helper_functions import encode, decode
+from helper_functions import decode, encode
 from ring.polynomial_ring import PolynomialRing
 
 DEFAULT_PARAMETERS = {
@@ -102,7 +102,7 @@ class Kyber:
     def apply_ntt(self, polynomials):
         return np.array(
             [
-                PolynomialRing(sympy.ntt(polynomial.get_coefs(), self.q))
+                PolynomialRing(sympy.ntt(polynomial.get_coefs(), self.q), is_ntt=True)
                 for polynomial in polynomials
             ]
         )
@@ -136,7 +136,8 @@ class Kyber:
                         hashlib.shake_128(rho + bytes([j]) + bytes([i])).digest(
                             3 * self.n
                         )
-                    )
+                    ),
+                    is_ntt=True,
                 )
 
         for i in range(0, self.k):
@@ -175,7 +176,8 @@ class Kyber:
         N = 0
         l = []
         for i in range(self.k):
-            l.append(decode(pk[i * 12 * 32: (i + 1) * 12 * 32], 12))
+            l.append(decode(pk[i * 12 * 32 : (i + 1) * 12 * 32], 12))
+            l[i].is_ntt = True
         t = np.array(l)
         rho = pk[-32:]
         A_t = np.empty((self.k, self.k), dtype=object)
@@ -190,7 +192,8 @@ class Kyber:
                         hashlib.shake_128(rho + bytes([i]) + bytes([j])).digest(
                             3 * self.n
                         )
-                    )
+                    ),
+                    is_ntt=True,
                 )
 
         for i in range(0, self.k):
@@ -230,13 +233,18 @@ class Kyber:
     def dec(self, sk, c):
         u = []
         for i in range(self.k):
-            u.append(decode(c[i * self.du * 32: (i + 1) * self.du * 32], self.du).decompress(self.du))
+            u.append(
+                decode(
+                    c[i * self.du * 32 : (i + 1) * self.du * 32], self.du
+                ).decompress(self.du)
+            )
         u = np.array(u)
-        v = c[-self.dv * 32:]
+        v = c[-self.dv * 32 :]
         v = np.array(decode(v, self.dv).decompress(self.dv))
         s = []
         for i in range(self.k):
-            s.append(decode(sk[i * 12 * 32: (i + 1) * 12 * 32], 12))
+            s.append(decode(sk[i * 12 * 32 : (i + 1) * 12 * 32], 12))
+            s[i].is_ntt = True
         s = np.array(s)
         m = self.apply_intt(np.array([s.T @ self.apply_ntt(u)]))
         m = (v - m)[0]
