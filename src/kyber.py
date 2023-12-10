@@ -5,8 +5,8 @@ import numpy as np
 import sympy
 from Cryptodome.Random import get_random_bytes
 
-from helper_functions import encode
-from src.ring.polynomial_ring import PolynomialRing
+from helper_functions import decode, encode
+from ring.polynomial_ring import PolynomialRing
 
 DEFAULT_PARAMETERS = {
     "kyber_512": {
@@ -102,7 +102,15 @@ class Kyber:
     def apply_ntt(self, polynomials):
         return np.array(
             [
-                PolynomialRing(sympy.ntt(polynomial.get_coefs(), self.q))
+                PolynomialRing(sympy.ntt(polynomial.get_coefs(), self.q), is_ntt=True)
+                for polynomial in polynomials
+            ]
+        )
+
+    def apply_intt(self, polynomials):
+        return np.array(
+            [
+                PolynomialRing(sympy.intt(polynomial.get_coefs(), self.q))
                 for polynomial in polynomials
             ]
         )
@@ -125,10 +133,11 @@ class Kyber:
             for j in range(0, self.k):
                 self.A[i, j] = PolynomialRing(
                     self.parse(
-                        hashlib.shake_128(rho + bytes([i]) + bytes([j])).digest(
+                        hashlib.shake_128(rho + bytes([j]) + bytes([i])).digest(
                             3 * self.n
                         )
-                    )
+                    ),
+                    is_ntt=True,
                 )
 
         for i in range(0, self.k):
@@ -161,9 +170,94 @@ class Kyber:
         for poly in self.s:
             sk += encode(poly, 12)
 
-        return pk, sk
+        return pk + rho, sk
+
+    def enc(self, pk, m):
+        N = 0
+        l = []
+        for i in range(self.k):
+            l.append(decode(pk[i * 12 * 32 : (i + 1) * 12 * 32], 12))
+            l[i].is_ntt = True
+        t = np.array(l)
+        rho = pk[-32:]
+        A_t = np.empty((self.k, self.k), dtype=object)
+
+        r = np.empty(self.k, dtype=object)
+        e1 = np.empty(self.k, dtype=object)
+
+        for i in range(self.k):
+            for j in range(self.k):
+                A_t[i][j] = PolynomialRing(
+                    self.parse(
+                        hashlib.shake_128(rho + bytes([i]) + bytes([j])).digest(
+                            3 * self.n
+                        )
+                    ),
+                    is_ntt=True,
+                )
+
+        for i in range(0, self.k):
+            r[i] = PolynomialRing(
+                self.CBD(
+                    hashlib.shake_256(rho + bytes([N])).digest(self.eta_1 * 64),
+                    self.eta_1,
+                )
+            )
+            N += 1
+
+        for i in range(0, self.k):
+            e1[i] = PolynomialRing(
+                self.CBD(
+                    hashlib.shake_256(rho + bytes([N])).digest(self.eta_2 * 64),
+                    self.eta_2,
+                )
+            )
+            N += 1
+
+        e2 = PolynomialRing(
+            self.CBD(
+                hashlib.shake_256(rho + bytes([N])).digest(self.eta_2 * 64),
+                self.eta_2,
+            )
+        )
+
+        r = self.apply_ntt(r)
+        u = self.apply_intt(A_t @ r) + e1
+        v = self.apply_intt(np.array([t.T @ r]))[0] + e2 + decode(m, 1).decompress(1)
+        c1 = bytes()
+        for polynomialRing in u:
+            c1 += encode(polynomialRing.compress(self.du), self.du)
+        c2 = encode(v.compress(self.dv), self.dv)
+        return c1 + c2
+
+    def dec(self, sk, c):
+        u = []
+        for i in range(self.k):
+            u.append(
+                decode(
+                    c[i * self.du * 32 : (i + 1) * self.du * 32], self.du
+                ).decompress(self.du)
+            )
+        u = np.array(u)
+        v = c[-self.dv * 32 :]
+        v = np.array(decode(v, self.dv).decompress(self.dv))
+        s = []
+        for i in range(self.k):
+            s.append(decode(sk[i * 12 * 32 : (i + 1) * 12 * 32], 12))
+            s[i].is_ntt = True
+        s = np.array(s)
+        m = self.apply_intt(np.array([s.T @ self.apply_ntt(u)]))
+        m = (v - m)[0]
+        m = encode(m.compress(1), 1)
+        return m
 
 
 if __name__ == "__main__":
     kyber512 = Kyber(DEFAULT_PARAMETERS["kyber_512"])
-    kyber512.key_gen()
+    pk, sk = kyber512.key_gen()
+    m = bytes([128] * 32)
+    encoded = kyber512.enc(pk, m)
+    decoded = kyber512.dec(sk, encoded)
+    print(m == decoded)
+    print(m)
+    print(decoded)
